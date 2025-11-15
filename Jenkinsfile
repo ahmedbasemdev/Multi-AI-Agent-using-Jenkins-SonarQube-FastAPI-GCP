@@ -1,6 +1,7 @@
 pipeline {
     agent any
     
+    
     environment {
         REGION = 'us-central1'
         GCP_PROJECT_ID = 'byteeit-testing-project'
@@ -18,18 +19,14 @@ pipeline {
                 }
             }
         }
-
-        
     }
     
     post {
         always {
-            // Clean up Docker images to save space
             sh 'docker system prune -f || true'
         }
         success {
             echo "Successfully built and deployed Medical RAG Chatbot to Cloud Run"
-            // Archive security scan report
             archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
         }
         failure {
