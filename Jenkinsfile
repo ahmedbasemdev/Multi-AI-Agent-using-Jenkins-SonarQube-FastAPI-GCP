@@ -14,14 +14,7 @@ pipeline {
             steps {
                 script {
                     echo 'Cloning GitHub repo to Jenkins...'
-                    checkout scmGit(
-                        branches: [[name: '*/main']], 
-                        extensions: [], 
-                        userRemoteConfigs: [[
-                            credentialsId: 'git-token', 
-                            url: 'https://github.com/ahmedbasemdev/Multi-AI-Agent-using-Jenkins-SonarQube-FastAPI-GCP.git'
-                        ]]
-                    )
+                    checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'git-token', url: 'https://github.com/ahmedbasemdev/Multi-AI-Agent-using-Jenkins-SonarQube-FastAPI-GCP.git']])
                 }
             }
         }
