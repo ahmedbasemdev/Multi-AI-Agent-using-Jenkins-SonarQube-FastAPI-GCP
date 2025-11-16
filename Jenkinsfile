@@ -30,19 +30,54 @@ pipeline {
 
         stage('Run SonarQube Analysis') {
             steps {
-        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-            withSonarQubeEnv('sonarqube') {
-                sh '''
-                ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
-                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=http://sonarqube-dind:9000 \
-                    -Dsonar.login=${SONAR_TOKEN}
-                '''
+                withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                    withSonarQubeEnv('sonarqube') {
+                     sh """
+                     ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
+						-Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+						-Dsonar.sources=. \
+						-Dsonar.host.url=http://sonarqube-dind:9000 \
+						-Dsonar.login=${SONAR_TOKEN}
+                     """
+                    }
+                }
             }
         }
-    }
-}
+
+        stage('Build, Tag, and Push to GCP Artifact Registry') {
+            steps {
+                withCredentials([file(credentialsId: 'gcp-service-account', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    script {
+                        def imageFullTag = "${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${REPOSITORY_NAME}/${IMAGE_NAME}:${TAG}"
+                        
+                        echo "Starting GCloud authentication and Docker build..."
+                        
+                        // Authenticate with GCP
+                        sh """
+                            gcloud auth activate-service-account --key-file="\${GOOGLE_APPLICATION_CREDENTIALS}"
+                            gcloud config set project ${GCP_PROJECT_ID}
+                            gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+                        """
+                        
+                        // Build Docker image
+                        sh """
+                            docker build -t ${IMAGE_NAME}:${TAG} .
+                        """
+                        
+                        // Security scan with Trivy
+                        //sh """
+                        //    trivy image --severity HIGH,CRITICAL --format json -o trivy-report.json ${IMAGE_NAME}:${TAG} || true
+                        //"""
+                        
+                        // Tag and push to Artifact Registry
+                        sh """
+                            docker tag ${IMAGE_NAME}:${TAG} ${imageFullTag}
+                            docker push ${imageFullTag}
+                        """
+                    }
+                }
+            }
+        }
         
       
     }
@@ -54,8 +89,7 @@ pipeline {
         }
         success {
             echo "Successfully built and deployed Medical RAG Chatbot to Cloud Run"
-            // Archive security scan report
-            archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
+            
         }
         failure {
             echo "Pipeline failed. Please check the logs."
