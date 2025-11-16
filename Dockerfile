@@ -17,11 +17,13 @@ RUN apt-get update && apt-get install -y \
 ## Copying ur all contents from local to app
 COPY requirements.txt .
 
+## Copying ur all contents from local to app
+COPY . .
+
+
 ## Run setup.py
 RUN pip install --no-cache-dir -e .
 
-## Copying ur all contents from local to app
-COPY . .
 
 # Used PORTS
 EXPOSE 8501
