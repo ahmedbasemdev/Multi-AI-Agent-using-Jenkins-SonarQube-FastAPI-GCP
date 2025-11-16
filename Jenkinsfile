@@ -78,6 +78,33 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to Cloud Run') {
+            steps {
+                withCredentials([file(credentialsId: 'gcp-service-account', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
+                    script {
+                        def imageFullTag = "${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${REPOSITORY_NAME}/${IMAGE_NAME}:${TAG}"
+                        def serviceName = 'multi-ai-agent'
+                        
+                        echo "Deploying to Cloud Run..."
+                        
+                        sh """
+                            gcloud auth activate-service-account --key-file="\${GOOGLE_APPLICATION_CREDENTIALS}"
+                            gcloud config set project ${GCP_PROJECT_ID}
+                            
+                            gcloud run deploy ${serviceName} \
+                                --image=${imageFullTag} \
+                                --region=${REGION} \
+                                --platform=managed \
+                                --allow-unauthenticated \
+                                --port=8501 \
+                                --memory=2Gi \
+                                --cpu=2 \
+                        """
+                    }
+                }
+            }
+        }
         
       
     }
@@ -88,7 +115,7 @@ pipeline {
             sh 'docker system prune -f || true'
         }
         success {
-            echo "Successfully built and deployed Medical RAG Chatbot to Cloud Run"
+            echo "Successfully built and deployed Multi AI Agent to Cloud Run"
             
         }
         failure {
